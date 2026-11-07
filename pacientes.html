@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Registro de Pacientes - Clínica del Sol</title>
+    <link rel="icon" href="LogoNeuro.png">
+    <script>
+        // Solo usuarios con sesión vigente pueden ver esta página
+        (function () {
+            var token = sessionStorage.getItem("sb_access_token");
+            var expira = Number(sessionStorage.getItem("sb_expires_at") || 0);
+            var perfil = null;
+            try { perfil = JSON.parse(sessionStorage.getItem("sb_perfil")); } catch (_) {}
+            if (!token || Date.now() > expira || !perfil || (perfil.rol === "Paciente" && !perfil.num_id)) {
+                sessionStorage.clear();
+                location.replace("login-paciente.html");
+            }
+        })();
+    </script>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { background: linear-gradient(135deg, #f0f4f8 0%, #d9e6f2 100%); font-family: 'Segoe UI', sans-serif; display: flex; align-items: flex-start; justify-content: center; min-height: 100vh; padding: 30px 20px; }
+        .card { max-width: 720px; width: 100%; background: white; padding: 40px; border-radius: 20px; box-shadow: 0 15px 35px rgba(12, 74, 110, 0.12); border-top: 6px solid #0c4a6e; }
+        .logo-placeholder { width: 85px; height: 85px; background-color: #f1f5f9; border-radius: 50%; margin: 0 auto 16px auto; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.05); }
+        .logo-img { width: 100%; height: 100%; object-fit: cover; }
+        .header h4 { color: #0c4a6e; font-size: 1.4rem; font-weight: 700; text-align: center; margin-bottom: 4px; }
+        .header small { color: #0284c7; font-weight: 600; font-size: 0.85rem; display: block; margin-bottom: 25px; text-align: center; }
+        fieldset { border: 1px solid #e2e8f0; border-radius: 14px; padding: 20px 20px 6px; margin-bottom: 22px; }
+        legend { color: #0c4a6e; font-weight: 700; font-size: 0.95rem; padding: 0 8px; }
+        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0 16px; }
+        .full { grid-column: 1 / -1; }
+        .form-group { margin-bottom: 15px; }
+        .form-label { display: block; font-weight: 600; color: #475569; font-size: 0.85rem; margin-bottom: 6px; }
+        .hint { display: block; font-weight: 400; color: #94a3b8; font-size: 0.78rem; margin-top: 4px; }
+        .form-control, .form-select, textarea { width: 100%; border: 1px solid #cbd5e1; padding: 11px 14px; border-radius: 10px; font-size: 0.95rem; background-color: #f8fafc; outline: none; font-family: inherit; }
+        textarea { resize: vertical; min-height: 90px; }
+        .form-control:focus, .form-select:focus, textarea:focus { border-color: #0284c7; background-color: #fff; box-shadow: 0 0 0 4px rgba(2, 132, 199, 0.15); }
+        .form-control[readonly] { color: #64748b; background-color: #f1f5f9; }
+        .btn-medical { background-color: #0284c7; border: none; color: white; padding: 14px; font-weight: 600; border-radius: 10px; width: 100%; font-size: 1rem; cursor: pointer; box-shadow: 0 4px 12px rgba(2, 132, 199, 0.2); }
+        .btn-medical:hover { background-color: #0369a1; }
+        .btn-medical:disabled { opacity: 0.7; cursor: wait; }
+        .mensaje { display: none; margin-top: 15px; padding: 12px 14px; border-radius: 10px; font-size: 0.9rem; font-weight: 500; }
+        .mensaje.ok { display: block; background: #ecfdf5; color: #047857; border: 1px solid #a7f3d0; }
+        .mensaje.error { display: block; background: #fef2f2; color: #b91c1c; border: 1px solid #fecaca; }
+        .btn-salir { display: block; margin: -12px auto 20px; background: none; border: none; color: #64748b; font-size: 0.85rem; cursor: pointer; text-decoration: underline; }
+        .btn-salir:hover { color: #0284c7; }
+        @media (max-width: 560px) { .card { padding: 28px 20px; } .grid { grid-template-columns: 1fr; } }
+    </style>
+</head>
+<body>
+
+<div class="card">
+    <div class="logo-placeholder"><img src="LogoNeuro.png" class="logo-img" alt="Logo Médico"></div>
+    <div class="header">
+        <h4>CLÍNICA DEL SOL</h4>
+        <small id="subtitulo">Registro de pacientes</small>
+    </div>
+    <button type="button" class="btn-salir" id="btnSalir">Cerrar sesión</button>
+
+    <form id="formPaciente">
+
+        <fieldset>
+            <legend>Datos del paciente</legend>
+            <div class="grid">
+                <div class="form-group">
+                    <label class="form-label" for="tipo_documento">Tipo de documento</label>
+                    <select class="form-select" id="tipo_documento" required>
+                        <option value="CC">Cédula de ciudadanía (CC)</option>
+                        <option value="TI">Tarjeta de identidad (TI)</option>
+                        <option value="RC">Registro civil (RC)</option>
+                        <option value="CE">Cédula de extranjería (CE)</option>
+                        <option value="PAS">Pasaporte (PAS)</option>
+                        <option value="NUIP">NUIP</option>
+                        <option value="PPT">Permiso por protección temporal (PPT)</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="num_id">Número de documento</label>
+                    <input type="text" class="form-control" id="num_id" inputmode="numeric" placeholder="Sin puntos ni espacios" required>
+                </div>
+                <div class="form-group full">
+                    <label class="form-label" for="nombres_completos">Nombres completos</label>
+                    <input type="text" class="form-control" id="nombres_completos" placeholder="Nombres y apellidos" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="direccion">Dirección</label>
+                    <input type="text" class="form-control" id="direccion" placeholder="Calle, barrio" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="telefono">Teléfono</label>
+                    <input type="tel" class="form-control" id="telefono" placeholder="3001234567" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="codigo_ciudad">Código de ciudad</label>
+                    <input type="text" class="form-control" id="codigo_ciudad" placeholder="Código de la tabla ciudad" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="fecha_registro">Fecha de registro</label>
+                    <input type="date" class="form-control" id="fecha_registro" readonly>
+                </div>
+            </div>
+        </fieldset>
+
+        <fieldset>
+            <legend>Familiar responsable o acompañante</legend>
+            <div class="grid">
+                <div class="form-group">
+                    <label class="form-label" for="f_tipo_documento">Tipo de documento</label>
+                    <select class="form-select" id="f_tipo_documento">
+                        <option value="CC">Cédula de ciudadanía (CC)</option>
+                        <option value="TI">Tarjeta de identidad (TI)</option>
+                        <option value="RC">Registro civil (RC)</option>
+                        <option value="CE">Cédula de extranjería (CE)</option>
+                        <option value="PAS">Pasaporte (PAS)</option>
+                        <option value="NUIP">NUIP</option>
+                        <option value="PPT">Permiso por protección temporal (PPT)</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="f_num_id">Número de documento
+                        <span class="hint">Déjalo vacío si el paciente no tiene familiar responsable.</span>
+                    </label>
+                    <input type="text" class="form-control" id="f_num_id" inputmode="numeric" placeholder="Sin puntos ni espacios">
+                </div>
+                <div class="form-group full">
+                    <label class="form-label" for="f_nombre_completo">Nombre completo</label>
+                    <input type="text" class="form-control" id="f_nombre_completo" placeholder="Nombres y apellidos">
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="f_telefono">Teléfono</label>
+                    <input type="tel" class="form-control" id="f_telefono" placeholder="3001234567">
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="f_parentesco">Parentesco</label>
+                    <input type="text" class="form-control" id="f_parentesco" placeholder="Madre, hijo, esposa...">
+                </div>
+            </div>
+        </fieldset>
+
+        <fieldset>
+            <legend>Información clínica</legend>
+            <div class="form-group">
+                <label class="form-label" for="patologia_diagnostico">Patología o diagnóstico</label>
+                <input type="text" class="form-control" id="patologia_diagnostico" required>
+            </div>
+            <div class="form-group">
+                <label class="form-label" for="detalles_clinicos">Detalles clínicos</label>
+                <textarea id="detalles_clinicos" placeholder="Antecedentes, síntomas, observaciones"></textarea>
+            </div>
+            <div class="form-group">
+                <label class="form-label" for="imagenes">Imágenes diagnósticas
+                    <span class="hint">Hasta 5 archivos (imagen o PDF), máximo 10 MB cada uno.</span>
+                </label>
+                <input type="file" class="form-control" id="imagenes" accept="image/*,.pdf" multiple>
+            </div>
+        </fieldset>
+
+        <button type="submit" class="btn-medical" id="btnGuardar">Guardar paciente</button>
+        <div id="mensaje" class="mensaje" role="status" aria-live="polite"></div>
+    </form>
+</div>
+
+<script>
+    // ---------- Configuración (solo fetch nativo, sin librerías externas) ----------
+    const SUPABASE_URL = "https://bnfecywizaewbspsskfg.supabase.co";
+    const SUPABASE_KEY = "sb_publishable_MWEf-M1gHqJCeo8IjerJlQ_T_culJ-1";
+    const TABLA_PACIENTES = "pacientes";
+    const TABLA_FAMILIARES = "familiares";
+    const BUCKET_IMAGENES = "imagenes-diagnosticas";   // bucket PRIVADO en Supabase Storage
+    const IMAGENES_COMO_ARREGLO = false;               // true si la columna imagenes_diagnosticas es text[]
+    const MAX_ARCHIVOS = 5;
+    const MAX_BYTES = 10 * 1024 * 1024;
+
+    document.getElementById("btnSalir").addEventListener("click", function () {
+        sessionStorage.clear();
+        location.replace("login-paciente.html");
+    });
+
+    const form = document.getElementById("formPaciente");
+    const boton = document.getElementById("btnGuardar");
+    const cajaMensaje = document.getElementById("mensaje");
+    const valor = id => document.getElementById(id).value.trim();
+
+    // Fecha de registro automática (fecha local, formato AAAA-MM-DD)
+    const hoy = new Date();
+    document.getElementById("fecha_registro").value =
+        hoy.getFullYear() + "-" + String(hoy.getMonth() + 1).padStart(2, "0") + "-" + String(hoy.getDate()).padStart(2, "0");
+
+    function mostrarMensaje(texto, tipo) {
+        cajaMensaje.textContent = texto;
+        cajaMensaje.className = "mensaje " + tipo;
+    }
+
+    // Números de documento: número si son solo dígitos, texto si tienen letras (ej. pasaportes)
+    function normalizarId(texto) {
+        return /^\d{1,15}$/.test(texto) ? Number(texto) : texto;
+    }
+
+    // Si más adelante hay inicio de sesión, el token se guarda en sessionStorage y se envía aquí
+    function cabeceras(extra) {
+        const h = Object.assign({ "apikey": SUPABASE_KEY }, extra || {});
+        const token = sessionStorage.getItem("sb_access_token");
+        if (token) h["Authorization"] = "Bearer " + token;
+        return h;
+    }
+
+    async function errorDeRespuesta(respuesta) {
+        try {
+            const err = await respuesta.json();
+            if (err.code === "23505") return "Ya existe un registro con ese número de documento.";
+            if (err.code === "23503") return "El código de ciudad o el familiar indicado no existe.";
+            if (err.code === "42501") return "El servidor no permite esta operación (revisa las políticas RLS).";
+            return err.message || err.error || ("Error " + respuesta.status);
+        } catch (_) {
+            return "Error " + respuesta.status;
+        }
+    }
+
+    async function insertar(tabla, cuerpo, preferencia) {
+        const respuesta = await fetch(SUPABASE_URL + "/rest/v1/" + tabla, {
+            method: "POST",
+            headers: cabeceras({ "Content-Type": "application/json", "Prefer": preferencia }),
+            body: JSON.stringify(cuerpo)
+        });
+        if (!respuesta.ok) throw new Error(await errorDeRespuesta(respuesta));
+    }
+
+    async function subirArchivo(archivo, numId) {
+        const nombreSeguro = archivo.name.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^\w.\-]+/g, "_");
+        const ruta = numId + "/" + Date.now() + "-" + nombreSeguro;
+        const respuesta = await fetch(SUPABASE_URL + "/storage/v1/object/" + BUCKET_IMAGENES + "/" + ruta, {
+            method: "POST",
+            headers: cabeceras({ "Content-Type": archivo.type || "application/octet-stream", "x-upsert": "false" }),
+            body: archivo
+        });
+        if (!respuesta.ok) throw new Error("No se pudo subir «" + archivo.name + "»: " + await errorDeRespuesta(respuesta));
+        return ruta;
+    }
+
+    form.addEventListener("submit", async function (e) {
+        e.preventDefault();
+        cajaMensaje.className = "mensaje";
+
+        // Validación del familiar: si hay número, los demás datos son obligatorios
+        const hayFamiliar = valor("f_num_id") !== "";
+        if (hayFamiliar && (!valor("f_nombre_completo") || !valor("f_telefono") || !valor("f_parentesco"))) {
+            mostrarMensaje("Completa nombre, teléfono y parentesco del familiar, o deja vacío su número de documento.", "error");
+            return;
+        }
+
+        const archivos = Array.from(document.getElementById("imagenes").files);
+        if (archivos.length > MAX_ARCHIVOS) {
+            mostrarMensaje("Selecciona máximo " + MAX_ARCHIVOS + " archivos.", "error");
+            return;
+        }
+        if (archivos.some(a => a.size > MAX_BYTES)) {
+            mostrarMensaje("Cada archivo debe pesar máximo 10 MB.", "error");
+            return;
+        }
+
+        boton.disabled = true;
+        boton.textContent = "Guardando...";
+
+        try {
+            const numId = normalizarId(valor("num_id"));
+
+            // 1. Familiar responsable (si ya existe, se conserva el registro actual)
+            if (hayFamiliar) {
+                await insertar(TABLA_FAMILIARES, {
+                    num_id: normalizarId(valor("f_num_id")),
+                    tipo_documento: valor("f_tipo_documento"),
+                    nombre_completo: valor("f_nombre_completo"),
+                    telefono: valor("f_telefono"),
+                    parentesco: valor("f_parentesco")
+                }, "resolution=ignore-duplicates,return=minimal");
+            }
+
+            // 2. Imágenes diagnósticas (se guardan las rutas, el bucket es privado)
+            const rutas = [];
+            for (const archivo of archivos) {
+                rutas.push(await subirArchivo(archivo, numId));
+            }
+
+            // 3. Paciente
+            await insertar(TABLA_PACIENTES, {
+                tipo_documento: valor("tipo_documento"),
+                num_id: numId,
+                nombres_completos: valor("nombres_completos"),
+                direccion: valor("direccion"),
+                telefono: valor("telefono"),
+                codigo_ciudad: normalizarId(valor("codigo_ciudad")),
+                id_familiar_responsable: hayFamiliar ? normalizarId(valor("f_num_id")) : null,
+                patologia_diagnostico: valor("patologia_diagnostico"),
+                detalles_clinicos: valor("detalles_clinicos"),
+                imagenes_diagnosticas: rutas.length === 0 ? null : (IMAGENES_COMO_ARREGLO ? rutas : rutas.join(",")),
+                fecha_registro: valor("fecha_registro")
+            }, "return=minimal");
+
+            mostrarMensaje("Paciente guardado correctamente.", "ok");
+            form.reset();
+            document.getElementById("fecha_registro").value =
+                hoy.getFullYear() + "-" + String(hoy.getMonth() + 1).padStart(2, "0") + "-" + String(hoy.getDate()).padStart(2, "0");
+
+        } catch (error) {
+            mostrarMensaje(
+                error instanceof TypeError
+                    ? "No se pudo conectar con el servidor. Revisa tu conexión a internet."
+                    : "No se pudo guardar: " + error.message,
+                "error"
+            );
+        } finally {
+            boton.disabled = false;
+            boton.textContent = "Guardar paciente";
+        }
+    });
+
+    // ---------- Si quien entra es un paciente: sus datos van precargados ----------
+    const perfil = JSON.parse(sessionStorage.getItem("sb_perfil") || "{}");
+    if (perfil.rol === "Paciente") {
+        document.getElementById("subtitulo").textContent = "Información del paciente y su acompañante";
+        document.getElementById("tipo_documento").value = perfil.tipo_documento;
+        document.getElementById("tipo_documento").disabled = true;
+        document.getElementById("num_id").value = perfil.num_id;
+        document.getElementById("num_id").readOnly = true;
+        document.getElementById("nombres_completos").value = perfil.nombre_completo;
+        document.getElementById("nombres_completos").readOnly = true;
+
+        // Si ya registró su ficha, no se vuelve a llenar
+        fetch(SUPABASE_URL + "/rest/v1/" + TABLA_PACIENTES + "?select=num_id&num_id=eq." + encodeURIComponent(perfil.num_id), { headers: cabeceras() })
+            .then(function (r) { return r.ok ? r.json() : []; })
+            .then(function (filas) {
+                if (filas.length > 0) {
+                    form.querySelectorAll("input, select, textarea, button[type=submit]").forEach(function (el) { el.disabled = true; });
+                    mostrarMensaje("Ya registraste tu información. Si necesitas corregir algo, comunícate con la clínica.", "ok");
+                }
+            })
+            .catch(function () {});
+    }
+</script>
+</body>
+</html>
